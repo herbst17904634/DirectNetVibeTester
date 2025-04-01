@@ -52,10 +52,17 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
+                                <GridViewColumn Header="送信値" Width="120">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding SendValue}" Margin="2"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
-                    <!-- 更新ボタン -->
+                    <!-- 反映ボタン -->
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10">
                         <Button x:Name="btnUpdateTags" Content="反映" Click="btnUpdateTags_Click"/>
                         <Button x:Name="btnResetTags" Content="リセット" Margin="10,0,0,0" Click="btnResetTags_Click"/>

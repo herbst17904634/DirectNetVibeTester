@@ -19,6 +19,7 @@ namespace DirectNetViveTester
         {
             public int ChannelNumber { get; set; }
             public string? TagName { get; set; }
+            public string SendValue { get; set; } = "1.0";  // デフォルト値を設定
             
             public TagSetting(int channelNumber, string tagName)
             {
@@ -231,7 +232,14 @@ namespace DirectNetViveTester
                     return;
                 }
 
-                var message = $"{labelSuffix}:1.0";
+                // タグ設定から送信値を取得
+                var sendValue = "1.0";  // デフォルト値
+                if (buttonIndex < _tagSettings.Count)
+                {
+                    sendValue = _tagSettings[buttonIndex].SendValue;
+                }
+
+                var message = $"{labelSuffix}:{sendValue}";
                 var buffer = Encoding.UTF8.GetBytes(message);
                 await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
                 LogMessage("Info", $"Sent: {message}");
