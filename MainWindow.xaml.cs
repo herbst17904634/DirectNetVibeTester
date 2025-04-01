@@ -1,9 +1,6 @@
-﻿using System;
 using System.ComponentModel;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -18,6 +15,27 @@ namespace DirectNetViveTester
 
     public partial class MainWindow : Window
     {
+        private class TagSetting
+        {
+            public int ChannelNumber { get; set; }
+            public string? TagName { get; set; }
+            
+            public TagSetting(int channelNumber, string tagName)
+            {
+                ChannelNumber = channelNumber;
+                TagName = tagName;
+            }
+        }
+
+        private readonly List<TagSetting> _tagSettings = new();
+        private readonly string[] _buttonTags = new string[]
+        {
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+            "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+            "u", "v", "w", "x", "y", "z", "aa", "ab", "ac", "ad",
+            "ae", "af", "ag", "ah", "ai", "aj", "ak", "al", "am", "an"
+        };
+
         // _webSocket を null 許容にしておく
         private ClientWebSocket? _webSocket;
 
@@ -26,6 +44,7 @@ namespace DirectNetViveTester
             InitializeComponent();
             LoadLastUrl();
             this.Closing += MainWindow_Closing;
+            InitializeTagSettings();
             InitializeButtons();
         }
 
@@ -51,34 +70,71 @@ namespace DirectNetViveTester
             SaveLastUrl();
         }
 
+        private void InitializeTagSettings()
+        {
+            _tagSettings.Clear();
+            // デフォルトのタグ名を設定
+            for (int i = 0; i < _buttonTags.Length; i++)
+            {
+                _tagSettings.Add(new TagSetting(i + 1, _buttonTags[i]));
+            }
+            tagListView.ItemsSource = null;  // 一度nullを設定して確実に更新
+            tagListView.ItemsSource = _tagSettings;
+        }
+
+        private void btnUpdateTags_Click(object sender, RoutedEventArgs e)
+        {
+            InitializeButtons();
+        }
+
+        private void btnResetTags_Click(object sender, RoutedEventArgs e)
+        {
+            _tagSettings.Clear();
+            // デフォルトのタグ名を設定
+            for (int i = 0; i < _buttonTags.Length; i++)
+            {
+                _tagSettings.Add(new TagSetting(i + 1, _buttonTags[i]));
+            }
+            tagListView.ItemsSource = null;  // 一度nullを設定して確実に更新
+            tagListView.ItemsSource = _tagSettings;
+        }
+
         // 40個のボタンを UniformGrid に追加
         private void InitializeButtons()
         {
-            for (int i = 0; i < 40; i++)
+            buttonGrid.Children.Clear();
+            
+            // タグ設定の数を確認
+            int tagCount = _tagSettings.Count;
+            
+            for (int index = 0; index < 40; index++)
             {
                 Button btn = new Button();
-                string labelSuffix = GetLabelSuffix(i); // 例："a", "b", …, "an"
-                btn.Content = $"CN{i+1}: {labelSuffix}";
+                string labelSuffix;
+                
+                // タグ設定が存在する場合
+                if (index < tagCount && _tagSettings[index].TagName != null)
+                {
+                    labelSuffix = _tagSettings[index].TagName;
+                }
+                // タグ設定が存在しない場合
+                else if (index < _buttonTags.Length)
+                {
+                    labelSuffix = _buttonTags[index];
+                }
+                // どちらも存在しない場合
+                else
+                {
+                    labelSuffix = "N/A";
+                }
+                
+                btn.Content = $"CN{index+1}: {labelSuffix}";
                 btn.Margin = new Thickness(5);
-                btn.Tag = i; // ボタン番号を Tag に保存
+                btn.Tag = index; // ボタン番号を Tag に保存
                 btn.Click += async (s, e) => await ButtonClicked((int)btn.Tag, labelSuffix);
                 buttonGrid.Children.Add(btn);
             }
         }
-
-        // Excel の列名のような文字列を生成するメソッド
-        private string GetLabelSuffix(int index)
-        {
-            const string letters = "abcdefghijklmnopqrstuvwxyz";
-            string result = "";
-            do
-            {
-                result = letters[index % 26] + result;
-                index = index / 26 - 1;
-            } while (index >= 0);
-            return result;
-        }
-
 
         // WebSocket の生存確認を行うメソッド（ping を送信）
         private async Task<bool> IsWebSocketAlive()
@@ -159,27 +215,30 @@ namespace DirectNetViveTester
         }
 
         // 各ボタン押下時の処理
-        private async Task ButtonClicked(int buttonIndex, string labelSuffix)
+        private async Task ButtonClicked(int buttonIndex, string? labelSuffix)
         {
-            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            if (labelSuffix == null)
             {
-                LogMessage("エラー", "WebSocketが接続されていません。");
+                LogMessage("Error", $"Button {buttonIndex + 1} has no tag name");
                 return;
             }
 
-            // ボタン 0 は "a:10000:1"、それ以降は [ラベル]:10000:1 の形式のメッセージを送信
-            string sendMessage = (buttonIndex == 0) ? "a:10000:1" : $"{labelSuffix}:10000:1";
-
             try
             {
-                await _webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(sendMessage)),
-                                           WebSocketMessageType.Text, true, CancellationToken.None);
-                // ログ出力: 「Cha[番号]:[ラベル]が押されました。送信: [送信メッセージ]」
-                LogMessage("情報", $"CN{buttonIndex+1}:{labelSuffix}が押されました。送信: {sendMessage}");
+                if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+                {
+                    LogMessage("Error", "WebSocket is not connected");
+                    return;
+                }
+
+                var message = $"{labelSuffix}:1.0";
+                var buffer = Encoding.UTF8.GetBytes(message);
+                await _webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                LogMessage("Info", $"Sent: {message}");
             }
             catch (Exception ex)
             {
-                LogMessage("エラー", $"送信エラー: {ex.Message}");
+                LogMessage("Error", $"Failed to send message: {ex.Message}");
             }
         }
 
