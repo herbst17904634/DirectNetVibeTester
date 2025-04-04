@@ -25,7 +25,7 @@ internal sealed partial class Settings : global::System.Configuration.Applicatio
     
     [global::System.Configuration.UserScopedSettingAttribute()]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-    [global::System.Configuration.DefaultSettingValueAttribute("ws://192.168.1.26:3031/haptic")]
+    [global::System.Configuration.DefaultSettingValueAttribute("ws://localhost:3031/haptic")]
     public string LastUrl {
         get {
             return ((string)(this["LastUrl"]));

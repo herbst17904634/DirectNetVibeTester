@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="LastUrl" Type="System.String" Scope="User">
-      <Value Profile="(Default)">ws://192.168.1.26:3031/haptic</Value>
+      <Value Profile="(Default)">ws://localhost:3031/haptic</Value>
     </Setting>
   </Settings>
 </SettingsFile>
