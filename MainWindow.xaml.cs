@@ -182,14 +182,53 @@ namespace DirectNetViveTester
             try
             {
                 _webSocket = new ClientWebSocket();
+                _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
                 Uri uri = new Uri(txtUrl.Text);
                 await _webSocket.ConnectAsync(uri, CancellationToken.None);
+                StartReceiveLoop();
                 LogMessage("情報", "接続に成功しました！");
             }
             catch (Exception ex)
             {
                 LogMessage("エラー", $"接続エラー: {ex.Message}");
             }
+        }
+
+        private CancellationTokenSource? _recvCts;
+        private void StartReceiveLoop()
+        {
+            if (_webSocket == null) return;
+            _recvCts = new CancellationTokenSource();
+            _ = Task.Run(async () =>
+            {
+                var buffer = new byte[8192];
+                try
+                {
+                    while (_webSocket != null &&
+                           _webSocket.State == WebSocketState.Open &&
+                           !_recvCts.IsCancellationRequested)
+                    {
+                        var result = await _webSocket.ReceiveAsync(
+                            new ArraySegment<byte>(buffer), _recvCts.Token);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            try
+                            {
+                                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                            }
+                            catch { /* ignore */ }
+                            break;
+                        }
+                        // テキスト/バイナリは本アプリでは未使用なので破棄
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    Dispatcher.Invoke(() => LogMessage("Error", $"Receive loop error: {ex.Message}"));
+                }
+            });
         }
 
         // Disconnect ボタン押下時の処理
